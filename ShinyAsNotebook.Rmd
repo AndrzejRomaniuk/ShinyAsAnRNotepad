@@ -1,0 +1,77 @@
+---
+title: "Shiny As Notebook"
+output: 
+       html_document:
+        theme: spacelab
+        toc: true
+        toc_depth: 5
+        css: styles.css
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(DescTools)
+```
+
+Hallucinated on 6.08.2021, as a home-grown, free-range alternative to a Jupyter notebook. Needs further dev time and a peek at possible security issues wit enabling direct code input when hosted online. 
+
+***
+
+| Created(written? coded?) by Andrzej Romaniuk
+| **[Doctoral Research Student, HCA](https://www.ed.ac.uk/profile/andrzej-romaniuk)**
+| **andrzej.romaniuk@ed.ac.uk**
+| **[github.com/AndrzejRomaniuk](https://github.com/AndrzejRomaniuk)**
+
+***
+```{r echo=FALSE, message = FALSE}
+shinyApp(
+  ui = fluidPage(class = "text-center",
+  mainPanel(
+    textAreaInput("inputcode", "Input area (multiple prints possible but only one plot)", 
+              "iris %>% filter(Sepal.Length>7)
+iris %>% ggplot(aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()", width="600px"), 
+    h4("Results Generated"), 
+    verbatimTextOutput("ConsoleResults"),
+    plotOutput("visualisation")
+    )
+)
+,
+  server = function(input, output){
+    
+  shinyEnv <- environment() 
+  output$displayData <- renderPrint({ head(iris) })  # prepare head(mtcars) for display on the UI
+  
+  # create codeInput variable to capture what the user entered; store results to codeResults
+  codeInput <- reactive({ input$inputcode })
+  
+  
+  codeResults <- renderPrint({
+    #Just simulating assignment not being printed by console, but in the future a better implementation is necessary
+    for (i in 1:length(parse(text=codeInput()))) {
+      if (parse(text=codeInput())[i] %like% "%<-%") {
+        eval(parse(text=codeInput())[i], envir=shinyEnv)
+      } else {
+         print(eval(parse(text=codeInput())[i], envir=shinyEnv))      
+      }       
+    }
+
+  })
+  
+  output$ConsoleResults <- codeResults
+  output$visualisation <- renderPlot(codeResults())
+    
+  },
+  options = list(height = 900)
+)
+
+
+
+
+
+```
+
+***
